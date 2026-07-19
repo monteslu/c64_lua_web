@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "c64lua": "^0.1.2",
+    "c64lua": "^0.1.3",
     "luacretro-web": "github:monteslu/luacretro_web",
     "monaco-editor": "^0.55.1",
     "react": "^18.3.1",

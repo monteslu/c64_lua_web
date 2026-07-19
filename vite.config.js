@@ -62,6 +62,7 @@ export default defineConfig({
       "c64lua/compiler/index.js",
       "c64lua/compiler/builtins.js",
       "c64lua/compiler/c64_palette.js",
+      "c64lua/compiler/peephole.js",   // imported by build.js, so the worker reaches it
       "c64lua/build",
       // the .d64 writer, listed by real path because the alias above rewrites
       // the specifier before optimizeDeps sees it
