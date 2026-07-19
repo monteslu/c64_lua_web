@@ -63,7 +63,16 @@ if (!ready) { killVite(); throw new Error("vite dev did not start:\n" + viteOut)
 
 let failed = false;
 const pass = (m) => console.log("PASS:", m);
-const fail = (m) => { failed = true; console.error("FAIL:", m); };
+// Dump the dev server's output on the FIRST failure. Vite announces a
+// mid-run re-optimize here ("new dependencies optimized: X" / "reloading"),
+// which is the real cause behind a generic "Execution context was destroyed".
+// Without this the log is silent about it and the bug looks like a flake.
+let dumped = false;
+const fail = (m) => {
+  failed = true;
+  console.error("FAIL:", m);
+  if (!dumped) { dumped = true; console.error("--- VITE OUTPUT ---\n" + viteOut.slice(-3000)); }
+};
 
 const browser = await chromium.launch();
 try {
