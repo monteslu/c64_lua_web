@@ -1,0 +1,7 @@
+node_modules
+dist
+public/cc65
+public/sdk
+public/core
+public/examples
+public/docs
