@@ -1,0 +1,40 @@
+# CI: the IDE must build and pass its browser gates from a fresh checkout with
+# registry deps only — the same gates that run locally, including the
+# byte-identity assertion (browser-built ROM == the c64lua CLI's ROM).
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: residue tripwire (this is a C64-only project)
+        # Catches another platform's CODE or ASSETS leaking in: an import of a
+        # sibling SDK/toolchain, or a foreign ROM/asset format. Deliberately NOT
+        # a bare word match — shared components legitimately mention the sibling
+        # IDEs in comments, and prose is not residue.
+        run: |
+          if grep -rniE "(from|require\()[^\n]*['\"](gtlua|gbalua|mdlua|romdev-core-gametank|romdev-platform-gba|romdev-core-gpgx)|\.(gtg|gtm2|gsi|gtr|gba)\b" \
+               src/ scripts/ test/ index.html 2>/dev/null; then
+            echo "foreign-platform residue found — this repo must stay C64-only"; exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci        # postinstall stages the toolchain into public/c64
+
+      - name: vite production build
+        run: npm run build
+
+      - name: install chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: browser gates (byte-identical build + emulator boot smoke + UI drive)
+        run: npm test
