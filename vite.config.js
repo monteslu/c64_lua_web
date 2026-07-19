@@ -1,20 +1,19 @@
-import { createRequire } from "node:module";
-import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const GL_STUB = fileURLToPath(new URL("./src/emu/gl-stub.js", import.meta.url));
 
-// c64lua's package.json `exports` covers the compiler entries this IDE needs
-// (./compiler/index.js, ./compiler/builtins.js, ./compiler/c64_palette.js and
-// ./build) — but NOT bin/d64.mjs, its pure-JS 1541 disk writer. The .d64 is the
-// headline artifact of a C64 build and that writer is the one the CLI uses, so
-// the browser runs the SAME code rather than a second implementation that could
-// drift. Resolve the one deep path straight to disk. (Upstream fix: add
-// "./bin/d64.mjs" to the exports map; then this alias becomes a no-op.)
-const require = createRequire(import.meta.url);
-const C64LUA = path.dirname(require.resolve("c64lua/package.json"));
+// c64lua >=0.1.3 exports its whole compiler/ and bin/ trees, so every deep
+// import this IDE needs — including bin/d64.mjs, the pure-JS 1541 disk writer —
+// resolves by bare specifier. The browser therefore runs the SAME writer the
+// CLI does rather than a second implementation that could drift.
+//
+// This used to alias c64lua/bin/* to an absolute path because 0.1.2's exports
+// map omitted it. That workaround was itself a bug: the app imports the bare
+// specifier, so the alias and the optimizeDeps entry never matched, Vite
+// discovered d64.mjs mid-build and reloaded the page, which is what destroyed
+// the Playwright execution context.
 
 export default defineConfig({
   plugins: [react()],
@@ -39,8 +38,6 @@ export default defineConfig({
       // binary neither can load. Stub the specifiers; nothing imports them.
       { find: /^native-gles$/, replacement: GL_STUB },
       { find: /^webgl-node$/, replacement: GL_STUB },
-      // see the C64LUA note above: the .d64 writer, by real path.
-      { find: /^c64lua\/bin\/(.*)$/, replacement: path.join(C64LUA, "bin/$1") },
     ],
   },
   optimizeDeps: {
@@ -64,9 +61,9 @@ export default defineConfig({
       "c64lua/compiler/c64_palette.js",
       "c64lua/compiler/peephole.js",   // imported by build.js, so the worker reaches it
       "c64lua/build",
-      // the .d64 writer, listed by real path because the alias above rewrites
-      // the specifier before optimizeDeps sees it
-      path.join(C64LUA, "bin/d64.mjs"),
+      // the .d64 writer, by bare specifier (c64lua >=0.1.3 exports ./bin/*) so
+      // it matches how build-worker.js actually imports it
+      "c64lua/bin/d64.mjs",
     ],
   },
   // same node-builtin externalization for the production bundle
